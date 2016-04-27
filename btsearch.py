@@ -46,17 +46,18 @@ def getContent():
 		req = requests.get(url=url,verify = False,timeout = 20)
 		responseStr = req.content
 		
+		# no result
+		if len(responseStr.split('<span>无<b>')) > 1:
+			print 'Can not find any page ! Exit!'
+			sys.exit()
+
+		
 		temppage = re.findall(r'<div class="bottom-pager">(.+?)</div>',responseStr,re.S)[0].replace('\n','')
 		pagestr = re.findall(r'<a href="(.+?)">',temppage)
 
 		if len(pagestr) < 1:
-			# test if only one page
-			pagespan = re.findall(r'<span>(.+?)"</span>',temppage)
-			if len(pagespan) < 1:
-				print 'Can not find any page ! Exit!'
-				sys.exit()
-			else:
-				maxpage = 1
+			# only one page
+			maxpage = 1
 		else:
 			maxpage = int(re.findall(r'<a href="(.+?)">',temppage)[-1].split('asc-')[1])
 
