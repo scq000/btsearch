@@ -11,17 +11,24 @@ import sys
 import re
 
 urls = (
+	"/","index",
 	"/query","queryResult"
 )
 
-def bThread(urllist,thd):
+render = web.template.render('templates',cache=False)
+
+class index:
+	def GET(self):
+		return render.index()
+
+def bThread(urllist):
 	
 	threadl = []
 	queue = Queue.Queue()
 	for url in urllist:
 		queue.put(url)
 
-	for x in xrange(0, int(thd)):
+	for x in xrange(0, 15):
 		threadl.append(tThread(queue))
 		
 	for t in threadl:
@@ -44,10 +51,9 @@ class tThread(threading.Thread):
 				continue
 
 class queryResult:
-	def GET(self):
+	def POST(self):
 
 		keyword = web.input().get("keyword")
-		useThd = web.input().get("thread")
 
 		url = "http://www.btmayi.me/search/"+ keyword +"-first-asc-1"
 
@@ -78,9 +84,9 @@ class queryResult:
 			global queryList
 			queryList = []
 
-			bThread(urllist,useThd)
+			bThread(urllist)
 
-			return json.dumps({"rows":queryList})
+			return json.dumps({"code":0,"rows":queryList})
 
 		except Exception,e:
 			return json.dumps({"code":-1,"msg":"exception"})

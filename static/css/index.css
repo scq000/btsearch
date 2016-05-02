@@ -1,0 +1,8 @@
+.search{position: relative}
+.search input{border-radius: 3px;border:#ccc 1px solid;width: 98%;padding:10px 1%;}
+.search button{position: absolute;top: 0;right: 0; height: 100%}
+.tip{padding: 10px;color: #c00;display: none}
+.result{padding: 20px 0;}
+.result table{width: 100%;margin: auto;table-layout: fixed;border-left:#ccc 1px solid;border-top:#ccc 1px solid; }
+.result table td{border-right:#ccc 1px solid;border-bottom:#ccc 1px solid;padding: 10px;}
+.result table p{padding: 0;margin: 0;font-size: 12px;line-height: 20px;}
