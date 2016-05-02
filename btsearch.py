@@ -1,86 +1,96 @@
 #! /usr/bin/env python
 #! coding=utf-8
-#! author kbdancer @nocrap.org
-#! python btsearch.py adult-video 50
+#! author kbdancer @92ez.com
 
 import threading
 import requests
 import Queue
+import json
+import web
 import sys
 import re
 
-def bThread(urllist):
-    
-    threadl = []
-    queue = Queue.Queue()
-    for url in urllist:
-        queue.put(url)
+urls = (
+	"/query","queryResult"
+)
 
-    for x in xrange(0, int(sys.argv[2])):
-        threadl.append(tThread(queue))
-        
-    for t in threadl:
-        t.start()
-    for t in threadl:
-        t.join()        
+def bThread(urllist,thd):
+	
+	threadl = []
+	queue = Queue.Queue()
+	for url in urllist:
+		queue.put(url)
+
+	for x in xrange(0, int(thd)):
+		threadl.append(tThread(queue))
+		
+	for t in threadl:
+		t.start()
+	for t in threadl:
+		t.join()		
 
 class tThread(threading.Thread):
-    def __init__(self, queue):
-        threading.Thread.__init__(self)
-        self.queue = queue
+	def __init__(self, queue):
+		threading.Thread.__init__(self)
+		self.queue = queue
 
-    def run(self):
-        
-        while not self.queue.empty(): 
-            url = self.queue.get()
-            try:
-                decodeSomething(url)
-            except:
-                continue
-
-def getContent():
-
-	url = "http://www.btmayi.me/search/"+ sys.argv[1] +"-first-asc-1"
-
-	try:
-		req = requests.get(url=url,verify = False,timeout = 20)
-		responseStr = req.content
+	def run(self):
 		
-		# no result
-		if len(responseStr.split('<span>无<b>')) > 1:
-			print 'Can not find any page ! Exit!'
-			sys.exit()
+		while not self.queue.empty(): 
+			url = self.queue.get()
+			try:
+				decodeSomething(url)
+			except:
+				continue
 
-		
-		temppage = re.findall(r'<div class="bottom-pager">(.+?)</div>',responseStr,re.S)[0].replace('\n','')
-		pagestr = re.findall(r'<a href="(.+?)">',temppage)
+class queryResult:
+	def GET(self):
 
-		if len(pagestr) < 1:
-			# only one page
-			maxpage = 1
-		else:
-			maxpage = int(re.findall(r'<a href="(.+?)">',temppage)[-1].split('asc-')[1])
+		keyword = web.input().get("keyword")
+		useThd = web.input().get("thread")
 
-		urllist = []
-		
-		for pl in range(1,maxpage+1):
-			urllist.append("http://www.btmayi.me/search/"+ sys.argv[1] +"-first-asc-"+str(pl))
+		url = "http://www.btmayi.me/search/"+ keyword +"-first-asc-1"
 
-		print "The keyword is "+ sys.argv[1] +", Page count is "+str(len(urllist)) +", Thread is "+sys.argv[2]+"!"
+		try:
+			req = requests.get(url=url,verify = False,timeout = 20)
+			responseStr = req.content
 
-		ifstart = raw_input("Start ?(Y/N)")
-		if ifstart.lower() == "y":
-			bThread(urllist)
-		else:
-			print 'Cancel!'
+			# no result
+			if len(responseStr.split('<span>无<b>')) > 1:
+				return json.dumps({"code":-1,"msg":"can not find any page!"})
+				sys.exit()
 
-	except Exception,e:
-		print e
-		pass
+			temppage = re.findall(r'<div class="bottom-pager">(.+?)</div>',responseStr,re.S)[0].replace('\n','')
+			pagestr = re.findall(r'<a href="(.+?)">',temppage)
+
+			if len(pagestr) < 1:
+				# only one page
+				maxpage = 1
+			else:
+				maxpage = int(re.findall(r'<a href="(.+?)">',temppage)[-1].split('asc-')[1])
+
+			urllist = []
+
+			for pl in range(1,maxpage+1):
+				tmpurl = "http://www.btmayi.me/search/"+ keyword +"-first-asc-"+str(pl)
+				urllist.append(tmpurl)
+
+			global queryList
+			queryList = []
+
+			bThread(urllist,useThd)
+
+			return json.dumps({"rows":queryList})
+
+		except Exception,e:
+			return json.dumps({"code":-1,"msg":"exception"})
+			pass
+
 
 def decodeSomething(url):
+
 	try:
-		tmpreq = requests.get(url=url,verify = False,timeout = 20)
+		tmpreq = requests.get(url = url,verify = False,timeout = 20)
 		htmlstr = tmpreq.content
 
 		magnet = re.findall(r'href="magnet(.+?)"',htmlstr)
@@ -103,13 +113,12 @@ def decodeSomething(url):
 			else:
 				realTitle = titleText[0]
 
-			print "-"*110 +"\nTitle: "+ realTitle +"\nMagnet: magnet"+ magnet[x] +"\nThunder: thunder"+ thunder[x] +"\nSize: "+size[0]
+			queryList.append({"title":realTitle,"magnet":"magnet"+magnet[x],"thunder":"thunder"+thunder[x],"size":size[0]})
+
 	except Exception,e:
-		print e
+		return json.dumps({"code":-1,"msg":"exception"})
 		pass
 
 if __name__ == '__main__':
-	try:
-		getContent()
-	except KeyboardInterrupt:
-		print '\nCancel.'
+	app = web.application(urls,globals())
+	app.run()
