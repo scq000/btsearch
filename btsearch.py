@@ -28,7 +28,7 @@ def bThread(urllist):
 	for url in urllist:
 		queue.put(url)
 
-	for x in xrange(0, 15):
+	for x in xrange(0, 50):
 		threadl.append(tThread(queue))
 		
 	for t in threadl:
