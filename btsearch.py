@@ -5,21 +5,13 @@
 import threading
 import requests
 import Queue
+import math
 import json
-import web
 import sys
 import re
 
-urls = (
-	"/","index",
-	"/query","queryResult"
-)
-
-render = web.template.render('templates',cache=False)
-
-class index:
-	def GET(self):
-		return render.index()
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 def bThread(urllist):
 	
@@ -28,7 +20,7 @@ def bThread(urllist):
 	for url in urllist:
 		queue.put(url)
 
-	for x in xrange(0, 50):
+	for x in xrange(0, 20):
 		threadl.append(tThread(queue))
 		
 	for t in threadl:
@@ -46,57 +38,74 @@ class tThread(threading.Thread):
 		while not self.queue.empty(): 
 			url = self.queue.get()
 			try:
-				decodeSomething(url)
+				decodeHTML(url)
 			except:
 				continue
 
-class queryResult:
-	def POST(self):
-
-		keyword = web.input().get("keyword")
-
-		url = "http://www.btmayi.me/search/"+ keyword +"-first-asc-1"
-
-		try:
-			req = requests.get(url=url,verify = False,timeout = 20)
-			responseStr = req.content
-
-			# no result
-			if len(responseStr.split('<span>无<b>')) > 1:
-				return json.dumps({"code":-1,"msg":"can not find any page!"})
-				sys.exit()
-
-			temppage = re.findall(r'<div class="bottom-pager">(.+?)</div>',responseStr,re.S)[0].replace('\n','')
-			pagestr = re.findall(r'<a href="(.+?)">',temppage)
-
-			if len(pagestr) < 1:
-				# only one page
-				maxpage = 1
-			else:
-				maxpage = int(re.findall(r'<a href="(.+?)">',temppage)[-1].split('asc-')[1])
-
-			urllist = []
-
-			for pl in range(1,maxpage+1):
-				tmpurl = "http://www.btmayi.me/search/"+ keyword +"-first-asc-"+str(pl)
-				urllist.append(tmpurl)
-
-			global queryList
-			queryList = []
-
-			bThread(urllist)
-
-			return json.dumps({"code":0,"rows":queryList})
-
-		except Exception,e:
-			return json.dumps({"code":-1,"msg":"exception"})
-			pass
-
-
-def decodeSomething(url):
-
+def getUrlByBTmayi():
+	keyword = sys.argv[1]
+	url = "http://www.btany.com/search/"+ keyword +"-first-asc-1"
+	headers = {"User-Agent":"Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101 Firefox/45.0"}
 	try:
-		tmpreq = requests.get(url = url,verify = False,timeout = 20)
+		req = requests.get(url=url,verify = False,headers = headers,timeout = 20)
+		responseStr = req.content
+
+		# no result
+		if len(responseStr.split('<span>无<b>')) > 1:
+			return json.dumps({"code":-1,"msg":"can not find any page!"})
+			sys.exit()
+
+		temppage = re.findall(r'<div class="bottom-pager">(.+?)</div>',responseStr,re.S)[0].replace('\n','')
+		pagestr = re.findall(r'<a href="(.+?)">',temppage)
+
+		if len(pagestr) < 1:
+			# only one page
+			maxpage = 1
+		else:
+			maxpage = int(re.findall(r'<a href="(.+?)">',temppage)[-1].split('asc-')[1])
+
+		urllist = []
+
+		for pl in range(1,maxpage+1):
+			tmpurl = {"site":"btany.com","url":"http://www.btany.com/search/"+ keyword +"-first-asc-"+str(pl)}
+			urllist.append(tmpurl)
+
+		bThread(urllist)
+
+	except Exception,e:
+		print e
+
+def getUrlByBTwalk():
+	keyword = sys.argv[1]
+	url = "http://www.btwalk.org/search/"+ keyword +"/1-1.html"
+	headers = {"User-Agent":"Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101 Firefox/45.0"}
+	try:
+		req = requests.get(url = url,verify = False,headers = headers,timeout = 20)
+		responseStr = req.content.replace('\r\n','')
+
+		totalCount = int(re.findall(r'<span>大约 (.+?) 条结果',responseStr)[0])
+		totalPage = int(math.ceil(float(totalCount)/10))
+
+		urllist = []
+		for pl in range(1,totalPage + 1):
+			tmpurl = {"site":"btwalk.org","url":"http://www.btwalk.org/search/"+ keyword +"/"+ str(pl) +"-1.html"}
+			urllist.append(tmpurl)
+
+		bThread(urllist)
+
+	except Exception,e:
+		print e
+
+def decodeHTML(url):
+	if url['site'] == 'btany.com':
+		decodeBTmayi(url['url'])
+	elif url['site'] == 'btwalk.org':
+		decodeBTwalk(url['url'])
+
+def decodeBTmayi(url):
+	headers = {"User-Agent":"Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101 Firefox/45.0"}
+	try:
+		tmpreq = requests.get(url = url,headers = headers,verify = False,timeout = 20)
 		htmlstr = tmpreq.content
 
 		magnet = re.findall(r'href="magnet(.+?)"',htmlstr)
@@ -120,11 +129,52 @@ def decodeSomething(url):
 				realTitle = titleText[0]
 
 			queryList.append({"title":realTitle,"magnet":"magnet"+magnet[x],"thunder":"thunder"+thunder[x],"size":size[0]})
-
 	except Exception,e:
-		return json.dumps({"code":-1,"msg":"exception"})
-		pass
+		print e
+
+def decodeBTwalk(url):
+	headers = {"User-Agent":"Mozilla/5.0 (X11; Linux x86_64; rv:45.0) Gecko/20100101 Firefox/45.0"}
+	try:
+		tmpreq = requests.get(url = url,headers = headers,verify = False,timeout = 20)
+		htmlstr = tmpreq.content.replace('\r\n','')
+
+		if len(htmlstr) > 10000:
+			itemsDiv = re.findall(r'<div class="search-item">(.+?)</div>',htmlstr)
+
+			titles = re.findall(r'<div class="item-title">(.+?)</div>',htmlstr)
+			magnet = re.findall(r'href="magnet(.+?)"',htmlstr)
+			thunder = re.findall(r'href="thunder(.+?)"',htmlstr)
+			sizes = re.findall(r'文件大小：(.+?)</b>',htmlstr)
+
+			for x in range(0,len(itemsDiv)):
+
+				titleStr = re.findall(r'<h3>(.+?)</h3>',titles[x])[0]
+				titleStr = titleStr.replace('\r\n','').replace('<b>','').replace('</b>','')
+				realTitle = re.findall(r'target="_blank">(.+?)</a>',titleStr)[0]
+				size = sizes[x].split('>')[1]
+
+				queryList.append({"title":realTitle,"magnet":"magnet"+magnet[x],"thunder":"thunder"+thunder[x],"size":size})
+	except Exception,e:
+		print e
 
 if __name__ == '__main__':
-	app = web.application(urls,globals())
-	app.run()
+	global queryList
+	queryList = []
+
+	print '[*] Searching ...'
+	print '[*]'+'-'*90
+
+	getUrlByBTmayi()
+	getUrlByBTwalk()
+
+	for m in queryList:
+		print '*'*120
+		print m['title']
+		print m['magnet']
+		print m['thunder']
+		print m['size']
+
+	print '[*]'+'-'*90
+	print '[*] Total '+str(len(queryList))+' items.'
+	print '[*] Finished!'
+
