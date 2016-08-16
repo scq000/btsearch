@@ -1,4 +1,2 @@
 # btsearch
-一个搜索磁力链的脚本
-### How to
-<pre>python btsearch.py test</pre>
+详细请参考 http://www.92ez.com/projects/
