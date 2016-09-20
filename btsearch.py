@@ -165,7 +165,7 @@ def decodeBTwalk(url):
                 size = sizes[x].split('>')[1]
 
                 detialUrl = 'http://www.btmeet.net' + re.findall(r'<a href="(.+?)" target="', titles[x])[0]
-                print '[*] 正在解析 ' + url + ' 的数据...'
+                print '[*] 正在解析 ' + detialUrl + ' 的数据...'
                 detialStr = requests.get(detialUrl, timeout=10).content
                 magnet = re.findall(r'href="magnet(.+?)"', detialStr)[0]
                 thunder = re.findall(r'href="thunder(.+?)"', detialStr)[0]
