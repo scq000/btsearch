@@ -7,7 +7,7 @@
 #### 怎么用？
 * git回来
 * 切换到对应目录
-* 执行 python btsearch 关键字
+* 执行 python btsearch.py 关键字
 
 #### 注意
 默认使用了20个线程，可自行在脚本里面更改
