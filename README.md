@@ -14,3 +14,16 @@
 
 #### 效果图
 http://www.92ez.com/index.php?action=show&id=23377
+
+#### 使用方法
+安装Python,以及requests库
+```
+brew install python
+brew install pip
+sudo pip install requests
+```
+
+安装sqlbrowser
+```
+brew cask install sqlitebrowser
+```
